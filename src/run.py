@@ -35,7 +35,11 @@ def save_image_callback(epoch_idx, logs):
         )
 
 # Start from content image.
-initial_input_image = np.random.normal(size = config.DIMS) * 0.256
+# TODO: Why this random scaling of the normal noise?
+if config.INPUT_IMAGE_PATH is None:
+    initial_input_image = np.random.normal(size = config.DIMS) * 0.256
+else:
+    initial_input_image = utils.open_image(config.INPUT_IMAGE_PATH)
 utils.save_image(0, initial_input_image)
 K.set_value(
     network.input_tensor,
