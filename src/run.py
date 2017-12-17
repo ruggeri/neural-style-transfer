@@ -35,10 +35,11 @@ def save_image_callback(epoch_idx, logs):
         )
 
 # Start from content image.
-content_target_image = utils.open_image(config.CONTENT_PHOTO_PATH)
+initial_input_image = np.random.normal(size = config.DIMS) * 0.256
+utils.save_image(0, initial_input_image)
 K.set_value(
     network.input_tensor,
-    np.expand_dims(content_target_image, axis = 0)
+    np.expand_dims(initial_input_image, axis = 0)
 )
 network.model.fit(
     [],

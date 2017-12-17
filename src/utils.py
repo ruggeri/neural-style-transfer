@@ -26,4 +26,4 @@ def save_image(idx, new_image):
     new_image = new_image.astype(np.uint8)
 
     new_image = Image.fromarray(new_image, 'RGB')
-    new_image.save(f'outputs/new_image_{idx:03}.png')
+    new_image.save(f'outputs/new_image_{idx:04}.png')
