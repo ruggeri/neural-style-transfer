@@ -29,7 +29,7 @@ style_target_featurizations = [
 ]
 
 def save_image_callback(epoch_idx, logs):
-    if epoch_idx % 100 == 0:
+    if epoch_idx % 1 == 0:
         utils.save_image(
             epoch_idx, K.eval(network.input_tensor)
         )

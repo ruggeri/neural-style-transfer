@@ -41,13 +41,15 @@ def style_matrix_tensor(conv_output_tensor):
     )
     flattened_filter_vectors = K.reshape(
         channel_first_output,
-        (conv_output_tensor.shape[-1], -1)
+        (channel_first_output.shape[1], -1)
     )
 
     style_matrix = K.dot(
         flattened_filter_vectors,
         K.transpose(flattened_filter_vectors)
-    )
+    ) / flattened_filter_vectors.shape.num_elements()
+    print(style_matrix.shape)
+    print(style_matrix.shape.num_elements())
 
     # First silly dimension is for example idx in "batch."
     return K.expand_dims(style_matrix, axis = 0)
@@ -69,7 +71,7 @@ def content_loss(y_true, y_pred):
 def style_loss(y_true, y_pred):
     num_elements = y_pred.shape.num_elements()
     return K.mean(
-        0.5 * K.square((y_true / num_elements) - (y_pred / num_elements))
+        0.5 * K.square(y_true - y_pred)
     )
 
 model = Model(
@@ -82,3 +84,5 @@ model.compile(
     loss_weights = config.LOSS_WEIGHTS,
     optimizer = Adam(lr = config.LEARNING_RATE),
 )
+
+print(model.summary())
