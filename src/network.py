@@ -62,15 +62,14 @@ style_matrix_tensors = [
 
 # == Losses ==
 def content_loss(y_true, y_pred):
-    return K.sum(
+    return K.mean(
         0.5 * K.square(y_true - y_pred)
     )
 
 def style_loss(y_true, y_pred):
-    return K.sum(
-        K.square(y_true - y_pred)
-    ) / (
-        (2 * y_pred.shape.num_elements()) ** 2
+    num_elements = y_pred.shape.num_elements()
+    return K.mean(
+        0.5 * K.square((y_true / num_elements) - (y_pred / num_elements))
     )
 
 model = Model(

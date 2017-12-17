@@ -22,7 +22,7 @@ def save_image(idx, new_image):
     )
     new_image = new_image + RGB_MEANS
 
-    new_image = np.clip(new_image, 0, 128)
+    new_image = np.clip(new_image, 0, 255)
     new_image = new_image.astype(np.uint8)
 
     new_image = Image.fromarray(new_image, 'RGB')
