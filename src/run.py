@@ -49,5 +49,6 @@ network.model.fit(
     [],
     [content_target_featurization, *style_target_featurizations],
     epochs = 10000,
-    callbacks = [LambdaCallback(on_epoch_end = save_image_callback)]
+    callbacks = [LambdaCallback(on_epoch_end = save_image_callback)],
+    initial_epoch = config.INITIAL_EPOCH,
 )

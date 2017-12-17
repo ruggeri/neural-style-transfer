@@ -16,7 +16,9 @@ def open_image(fname):
     return img_data
 
 def save_image(idx, new_image):
-    new_image = new_image.reshape(config.DIMS)
+    # We make a copy to avoid accidentally swapping channels on the
+    # user.
+    new_image = np.copy(new_image).reshape(config.DIMS)
     new_image[:, :, 2], new_image[:, :, 0] = (
         np.copy(new_image[:, :, 0]), np.copy(new_image[:, :, 2])
     )
@@ -26,4 +28,4 @@ def save_image(idx, new_image):
     new_image = new_image.astype(np.uint8)
 
     new_image = Image.fromarray(new_image, 'RGB')
-    new_image.save(f'outputs/new_image_{idx:04}.png')
+    new_image.save(config.OUTPUT_IMAGE_PATH.format(idx))
