@@ -2,6 +2,7 @@
 # https://arxiv.org/pdf/1603.08155.pdf
 # http://cs.stanford.edu/people/jcjohns/papers/eccv16/JohnsonECCV16Supplementary.pdf
 
+import config
 from keras.layers import Add, BatchNormalization, Conv2D, Cropping2D, Input, Lambda
 from keras.models import Model
 import tensorflow as tf
@@ -28,7 +29,7 @@ def residual_transform_block(input_tensor, num_filters):
     return Add()([residual, cropped_input])
 
 def build():
-    input_tensor = Input(shape = (256, 256, 3))
+    input_tensor = Input(shape = config.DIMS)
 
     # We will do a number of valid padding convolutions which reduces
     # image dimensions. Therefore, we will extend the image so that we
@@ -89,7 +90,7 @@ def build():
     # Bilinear resize recommended by https://distill.pub/2016/deconv-checkerboard/
     upscaled = Lambda(lambda transformed_image: tf.image.resize_bilinear(
         transformed_image,
-        (128, 128)
+        (config.DIMS[0] // 2, config.DIMS[1] // 2)
     ))(transformed_image)
     upscaled = Conv2D(
         filters = 64,
@@ -102,7 +103,7 @@ def build():
     # Round 2 of upscaling!
     upscaled = Lambda(lambda upscaled: tf.image.resize_bilinear(
         upscaled,
-        (256, 256),
+        (config.DIMS[0], config.DIMS[1]),
     ))(upscaled)
     upscaled = Conv2D(
         filters = 64,

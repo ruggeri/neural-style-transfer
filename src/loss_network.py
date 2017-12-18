@@ -24,6 +24,8 @@ def build(input_shape = None):
     ).output
 
     # == Style Featurization Tensors ==
+    # TODO: I think all these operations can be performed in just
+    # Keras without using the backend.
     def style_matrix_tensor(conv_output_tensor):
         num_pixels = (
             conv_output_tensor.shape[1].value

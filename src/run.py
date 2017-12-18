@@ -1,3 +1,5 @@
+# This is the slow optimization approach to finding a stylized image.
+
 import config
 import loss_network
 import utils
@@ -64,6 +66,7 @@ K.set_value(
     image_layer.weights[0],
     np.expand_dims(initial_input_image.flatten(), axis = 0)
 )
+
 model.fit(
     # This model only has native tensor inputs.
     np.ones((1, 1)),
