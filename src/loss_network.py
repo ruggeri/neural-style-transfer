@@ -3,26 +3,21 @@ from keras.applications.vgg16 import VGG16
 import keras.backend as K
 from keras.layers import Lambda
 from keras.models import Model
-from keras.optimizers import Adam
 import numpy as np
 
-def build(input_tensor):
+def build(input_shape = None, input_tensor = None):
     vgg = VGG16(
         include_top = False,
         weights = 'imagenet',
+        input_shape = input_shape,
         input_tensor = input_tensor,
         pooling = 'avg',
     )
 
-    # Freeze all layers of VGG16 except the input layer.
+    # Freeze all layers of VGG16! We don't want to train this!
     for idx, layer in enumerate(vgg.layers):
         if idx > 0:
             vgg.layers[idx].trainable = False
-        else:
-            vgg.layers[0].trainable = True
-            vgg.layers[0].trainable_weights.append(
-                input_tensor
-            )
 
     # Use the features of one of the final convolution layers.
     content_featurization_tensor = vgg.get_layer(
@@ -67,30 +62,12 @@ def build(input_tensor):
         for conv_layer in conv_layers
     ]
 
-    # == Losses ==
-    def content_loss(y_true, y_pred):
-        return K.mean(
-            0.5 * K.square(y_true - y_pred)
-        )
-
-    def style_loss(y_true, y_pred):
-        num_elements = y_pred.shape.num_elements()
-        return K.mean(
-            0.5 * K.square(y_true - y_pred)
-        )
-
     model = Model(
         # We need to give this bogus input because otherwise Keras will
         # think the graph is "disconnected" and doesn't work back to an
         # input tensor. We'll never actually provide this input.
         [input_tensor],
         [content_featurization_tensor, *style_matrix_tensors],
-    )
-
-    model.compile(
-        loss = [content_loss, *([style_loss] * 5)],
-        loss_weights = config.LOSS_WEIGHTS,
-        optimizer = Adam(lr = config.LEARNING_RATE),
     )
 
     return {

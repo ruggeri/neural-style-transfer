@@ -2,8 +2,9 @@ import config
 import loss_network
 import utils
 import keras.backend as K
-from keras.layers import Input
 from keras.callbacks import LambdaCallback
+from keras.layers import Input
+from keras.optimizers import Adam
 import numpy as np
 
 # Input is needed to instantiate a Keras tensor. It will create an
@@ -12,11 +13,23 @@ input_tensor = Input(tensor = K.variable(np.zeros(
     shape = (1, *config.DIMS),
 )))
 
-network = loss_network.build(input_tensor)
+network = loss_network.build(input_tensor = input_tensor)
 model, content_featurization_tensor, style_matrix_tensors = (
     [network[key] for key in [
         "model", "content_featurization_tensor", "style_matrix_tensors"
     ]]
+)
+
+# Hack so that the InputLayer is trainable.
+model.layers[0].trainable = True
+model.layers[0].trainable_weights.append(
+    input_tensor
+)
+
+model.compile(
+    loss = 'mse',
+    loss_weights = config.LOSS_WEIGHTS,
+    optimizer = Adam(lr = config.LEARNING_RATE),
 )
 
 print(model.summary())
