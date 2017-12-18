@@ -31,24 +31,33 @@ def build(input_tensor):
 
     # == Style Featurization Tensors ==
     def style_matrix_tensor(conv_output_tensor):
-        # Flatten from 4d to 2d: (num_layers, width*height)
+        num_pixels = (
+            conv_output_tensor.shape[1].value
+            * conv_output_tensor.shape[2].value
+        )
+        num_channels = conv_output_tensor.shape[3].value
+        num_elements_per_image = (num_channels * num_pixels)
+
+        # Flatten from 4d to 3d: (batch_size, num_layers, width*height)
         channel_first_output = K.permute_dimensions(
             conv_output_tensor, (0, 3, 1, 2)
         )
         flattened_filter_vectors = K.reshape(
             channel_first_output,
-            (channel_first_output.shape[1], -1)
+            (-1, channel_first_output.shape[1], num_pixels)
+        )
+        transposed_flattened_filter_vectors = K.permute_dimensions(
+            flattened_filter_vectors,
+            (0, 2, 1)
         )
 
-        style_matrix = K.dot(
+        style_matrix = K.batch_dot(
             flattened_filter_vectors,
-            K.transpose(flattened_filter_vectors)
-        ) / flattened_filter_vectors.shape.num_elements()
+            transposed_flattened_filter_vectors
+        ) / num_elements_per_image
         print(style_matrix.shape)
-        print(style_matrix.shape.num_elements())
 
-        # First silly dimension is for example idx in "batch."
-        return K.expand_dims(style_matrix, axis = 0)
+        return style_matrix
 
     conv_layers = [
         vgg.get_layer(f'block{idx}_conv1') for idx in range(1, 6)
