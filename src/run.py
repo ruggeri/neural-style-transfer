@@ -46,7 +46,8 @@ K.set_value(
     np.expand_dims(initial_input_image, axis = 0)
 )
 network.model.fit(
-    [],
+    # This model only has native tensor inputs.
+    None,
     [content_target_featurization, *style_target_featurizations],
     epochs = 10000,
     callbacks = [LambdaCallback(on_epoch_end = save_image_callback)],

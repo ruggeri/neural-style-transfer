@@ -6,7 +6,8 @@ from keras.models import Model
 from keras.optimizers import Adam
 import numpy as np
 
-# Input is needed to instantiate a Keras tensor.
+# Input is needed to instantiate a Keras tensor. It will create an
+# InputLayer for you (Input is just a function).
 input_tensor = Input(tensor = K.variable(np.zeros(
     shape = (1, *config.DIMS),
 )))
@@ -75,6 +76,9 @@ def style_loss(y_true, y_pred):
     )
 
 model = Model(
+    # We need to give this bogus input because otherwise Keras will
+    # think the graph is "disconnected" and doesn't work back to an
+    # input tensor. We'll never actually provide this input.
     [input_tensor],
     [content_featurization_tensor, *style_matrix_tensors],
 )
