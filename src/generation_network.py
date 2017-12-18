@@ -1,3 +1,7 @@
+# Mostly follows:
+# https://arxiv.org/pdf/1603.08155.pdf
+# http://cs.stanford.edu/people/jcjohns/papers/eccv16/JohnsonECCV16Supplementary.pdf
+
 from keras.layers import Add, BatchNormalization, Conv2D, Cropping2D, Input, Lambda
 from keras.models import Model
 import tensorflow as tf
