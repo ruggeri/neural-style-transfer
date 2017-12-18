@@ -5,12 +5,11 @@ from keras.layers import Lambda
 from keras.models import Model
 import numpy as np
 
-def build(input_shape = None, input_tensor = None):
+def build(input_shape = None):
     vgg = VGG16(
         include_top = False,
         weights = 'imagenet',
         input_shape = input_shape,
-        input_tensor = input_tensor,
         pooling = 'avg',
     )
 
@@ -50,7 +49,6 @@ def build(input_shape = None, input_tensor = None):
             flattened_filter_vectors,
             transposed_flattened_filter_vectors
         ) / num_elements_per_image
-        print(style_matrix.shape)
 
         return style_matrix
 
@@ -63,15 +61,8 @@ def build(input_shape = None, input_tensor = None):
     ]
 
     model = Model(
-        # We need to give this bogus input because otherwise Keras will
-        # think the graph is "disconnected" and doesn't work back to an
-        # input tensor. We'll never actually provide this input.
-        [input_tensor],
+        vgg.input,
         [content_featurization_tensor, *style_matrix_tensors],
     )
 
-    return {
-        "model": model,
-        "content_featurization_tensor": content_featurization_tensor,
-        "style_matrix_tensors": style_matrix_tensors
-    }
+    return model

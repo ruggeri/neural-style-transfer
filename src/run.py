@@ -3,29 +3,24 @@ import loss_network
 import utils
 import keras.backend as K
 from keras.callbacks import LambdaCallback
-from keras.layers import Input
+from keras.layers import Dense, Input, Reshape
+from keras.models import Model
 from keras.optimizers import Adam
 import numpy as np
 
-# Input is needed to instantiate a Keras tensor. It will create an
-# InputLayer for you (Input is just a function).
-input_tensor = Input(tensor = K.variable(np.zeros(
-    shape = (1, *config.DIMS),
-)))
-
-network = loss_network.build(input_tensor = input_tensor)
-model, content_featurization_tensor, style_matrix_tensors = (
-    [network[key] for key in [
-        "model", "content_featurization_tensor", "style_matrix_tensors"
-    ]]
+# The weights in this dense matrix will be our image. This is a hack!
+input_tensor = Input(shape = (1,))
+image_layer = Dense(
+    config.DIMS[0] * config.DIMS[1] * config.DIMS[2],
+    activation = 'linear',
+    use_bias = False,
 )
+image_tensor = Reshape(config.DIMS)(image_layer(input_tensor))
 
-# Hack so that the InputLayer is trainable.
-model.layers[0].trainable = True
-model.layers[0].trainable_weights.append(
-    input_tensor
-)
+model = loss_network.build(input_shape = config.DIMS)
+outputs = model(image_tensor)
 
+model = Model(input_tensor, outputs)
 model.compile(
     loss = 'mse',
     loss_weights = config.LOSS_WEIGHTS,
@@ -38,29 +33,24 @@ print(model.summary())
 print("Featurizing content photo!")
 content_target_image = utils.open_image(config.CONTENT_PHOTO_PATH)
 K.set_value(
-    input_tensor,
-    np.expand_dims(content_target_image, axis = 0)
+    image_layer.weights[0],
+    np.expand_dims(content_target_image.flatten(), axis = 0)
 )
-content_target_featurization = K.eval(
-    content_featurization_tensor
-)
+content_target_featurization, *_ = model.predict(np.ones((1, 1)))
 
 # == Read Style Image; Produce Style Featurization ==
 print("Featurizing style photo!")
 style_target_image = utils.open_image(config.STYLE_PHOTO_PATH)
 K.set_value(
-    input_tensor,
-    np.expand_dims(style_target_image, axis = 0)
+    image_layer.weights[0],
+    np.expand_dims(style_target_image.flatten(), axis = 0)
 )
-style_target_featurizations = [
-    K.eval(style_matrix_tensor)
-    for style_matrix_tensor in style_matrix_tensors
-]
+_, *style_target_featurizations = model.predict(np.ones((1, 1)))
 
 def save_image_callback(epoch_idx, logs):
     if epoch_idx % 1 == 0:
         utils.save_image(
-            epoch_idx, K.eval(input_tensor)
+            epoch_idx, K.eval(image_layer.weights[0]).reshape(config.DIMS)
         )
 
 # Start from content image.
@@ -71,12 +61,12 @@ else:
     initial_input_image = utils.open_image(config.INPUT_IMAGE_PATH)
 utils.save_image(0, initial_input_image)
 K.set_value(
-    input_tensor,
-    np.expand_dims(initial_input_image, axis = 0)
+    image_layer.weights[0],
+    np.expand_dims(initial_input_image.flatten(), axis = 0)
 )
 model.fit(
     # This model only has native tensor inputs.
-    None,
+    np.ones((1, 1)),
     [content_target_featurization, *style_target_featurizations],
     epochs = 10000,
     callbacks = [LambdaCallback(on_epoch_end = save_image_callback)],
