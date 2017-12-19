@@ -8,6 +8,13 @@ def open_image(fname):
     img_data = np.array(
         Image.open(fname), dtype = np.float64
     )
+
+    if len(img_data.shape) == 2:
+        # Grayscale image => Color
+        img_data = np.repeat(
+            img_data[:, :, np.newaxis], repeats = 3, axis = 2
+        )
+
     img_data = img_data - RGB_MEANS
     img_data[:, :, 2], img_data[:, :, 0] = (
         np.copy(img_data[:, :, 0]), np.copy(img_data[:, :, 2])
