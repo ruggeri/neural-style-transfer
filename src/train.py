@@ -23,9 +23,9 @@ _, *style_target_featurizations = encoding_model.predict(
 
 # Setup combined generation and loss network.
 generation_input_tensor = Input(config.DIMS)
-generation_model = generation_network.build()
+generation_model = generation_network.build(config.DIMS)
 generation_output = generation_model(generation_input_tensor)
-training_outputs = encoding_model(generation_input_tensor)
+training_outputs = encoding_model(generation_output)
 
 training_model = Model(generation_input_tensor, training_outputs)
 training_model.compile(
@@ -33,6 +33,13 @@ training_model.compile(
     loss_weights = config.LOSS_WEIGHTS,
     optimizer = Adam(config.LEARNING_RATE),
 )
+
+print("ENCODING MODEL")
+print(encoding_model.summary())
+print("GENERATOR MODEL")
+print(generation_model.summary())
+print("TRAINING MODEL")
+print(training_model.summary())
 
 # Just stack the style featurizations repeatedly; every batch input
 # has the same style target.
@@ -75,7 +82,7 @@ def training_generator():
 
 training_model.fit_generator(
     training_generator(),
-    epochs = 1,
+    epochs = 1000,
     initial_epoch = config.INITIAL_EPOCH,
     steps_per_epoch = (
         # I want to create 32x as many epochs so weights are saved
