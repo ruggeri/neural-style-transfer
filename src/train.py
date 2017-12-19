@@ -1,6 +1,6 @@
 import config256 as config
 import generation_network
-from keras.callbacks import LambdaCallback
+from keras.callbacks import LambdaCallback, ReduceLROnPlateau
 from keras.layers import Input
 from keras.models import Model
 from keras.optimizers import Adam
@@ -94,5 +94,12 @@ training_model.fit_generator(
         # more often. Each epoch looks at 1/32nd of the data.
         NUM_TRAINING_IMAGES // (config.BATCH_SIZE * 32)
     ),
-    callbacks = [LambdaCallback(on_epoch_end = save_generation_model)]
+    callbacks = [
+        LambdaCallback(on_epoch_end = save_generation_model),
+        ReduceLROnPlateau(
+            monitor = 'loss',
+            factor = 0.2,
+            patience = 5,
+        ),
+    ]
 )
