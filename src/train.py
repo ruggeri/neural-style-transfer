@@ -7,6 +7,7 @@ import loss_network
 import numpy as np
 import os
 import os.path
+import re
 import utils
 
 # == Encode the style image! ==
@@ -40,33 +41,39 @@ batch_style_target_featurizations = [
     for s_matrix in style_target_featurizations
 ]
 
+NUM_TRAINING_IMAGES = 0
+for fname in os.listdir(config.TRAINING_INPUT_DIRECTORY):
+    fname = os.path.join(config.TRAINING_INPUT_DIRECTORY, fname)
+    if not re.match('^.*\.JPEG$', fname): continue
+    NUM_TRAINING_IMAGES += 1
+
 def training_generator():
     training_images = []
     for fname in os.listdir(config.TRAINING_INPUT_DIRECTORY):
         fname = os.path.join(config.TRAINING_INPUT_DIRECTORY, fname)
-        if not os.path.isfile(fname): continue
+        if not re.match('^.*\.JPEG$', fname): continue
 
         training_image = utils.open_image(fname)
         training_images.append(training_image)
         if len(training_images) < config.BATCH_SIZE: continue
 
         # Convert to numpy array.
-        training_images = np.stack(training_images)
+        training_images_array = np.stack(training_images)
         training_images_content, *_ = encoding_model.predict(
-            training_images
+            training_images_array
         )
 
         yield (
-            training_images,
+            training_images_array,
             [training_images_content, *batch_style_target_featurizations]
         )
 
-        return
-
+        # Reset for the next batch.
+        training_images = []
 
 training_model.fit_generator(
     training_generator(),
     epochs = 1,
     initial_epoch = config.INITIAL_EPOCH,
-    steps_per_epoch = 1
+    steps_per_epoch = NUM_TRAINING_IMAGES // config.BATCH_SIZE
 )
