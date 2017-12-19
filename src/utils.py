@@ -22,10 +22,10 @@ def open_image(fname):
 
     return img_data
 
-def save_image(idx, new_image):
+def save_image(idx, new_image, image_shape = config.DIMS):
     # We make a copy to avoid accidentally swapping channels on the
     # user.
-    new_image = np.copy(new_image).reshape(config.DIMS)
+    new_image = np.copy(new_image).reshape(image_shape)
     new_image[:, :, 2], new_image[:, :, 0] = (
         np.copy(new_image[:, :, 0]), np.copy(new_image[:, :, 2])
     )

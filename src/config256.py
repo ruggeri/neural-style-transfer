@@ -13,3 +13,5 @@ TRAINING_INPUT_DIRECTORY = '/ebs/imagenet/ILSVRC2014_DET_train'
 LEARNING_RATE = 0.01
 LOSS_WEIGHTS = [5, *([1/5 * 5e2] * 5)]
 BATCH_SIZE = 1
+
+MODEL_PATH = "ckpts/weights.e0050.l1.641e+06.hdf5"
