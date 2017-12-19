@@ -1,5 +1,6 @@
 import config256 as config
 import generation_network
+from keras.callbacks import ModelCheckpoint
 from keras.layers import Input
 from keras.models import Model
 from keras.optimizers import Adam
@@ -48,32 +49,40 @@ for fname in os.listdir(config.TRAINING_INPUT_DIRECTORY):
     NUM_TRAINING_IMAGES += 1
 
 def training_generator():
-    training_images = []
-    for fname in os.listdir(config.TRAINING_INPUT_DIRECTORY):
-        fname = os.path.join(config.TRAINING_INPUT_DIRECTORY, fname)
-        if not re.match('^.*\.JPEG$', fname): continue
-
-        training_image = utils.open_image(fname)
-        training_images.append(training_image)
-        if len(training_images) < config.BATCH_SIZE: continue
-
-        # Convert to numpy array.
-        training_images_array = np.stack(training_images)
-        training_images_content, *_ = encoding_model.predict(
-            training_images_array
-        )
-
-        yield (
-            training_images_array,
-            [training_images_content, *batch_style_target_featurizations]
-        )
-
-        # Reset for the next batch.
+    while True:
         training_images = []
+        for fname in os.listdir(config.TRAINING_INPUT_DIRECTORY):
+            fname = os.path.join(config.TRAINING_INPUT_DIRECTORY, fname)
+            if not re.match('^.*\.JPEG$', fname): continue
+
+            training_image = utils.open_image(fname)
+            training_images.append(training_image)
+            if len(training_images) < config.BATCH_SIZE: continue
+
+            # Convert to numpy array.
+            training_images_array = np.stack(training_images)
+            training_images_content, *_ = encoding_model.predict(
+                training_images_array
+            )
+
+            yield (
+                training_images_array,
+                [training_images_content, *batch_style_target_featurizations]
+            )
+
+            # Reset for the next batch.
+            training_images = []
 
 training_model.fit_generator(
     training_generator(),
     epochs = 1,
     initial_epoch = config.INITIAL_EPOCH,
-    steps_per_epoch = NUM_TRAINING_IMAGES // config.BATCH_SIZE
+    steps_per_epoch = (
+        # I want to create 32x as many epochs so weights are saved
+        # more often. Each epoch looks at 1/32nd of the data.
+        NUM_TRAINING_IMAGES // (config.BATCH_SIZE * 32)
+    ),
+    callbacks = [ModelCheckpoint(
+        'ckpts/weights.e{epoch:04d}.l{loss:.3e}.hdf5',
+    )]
 )
