@@ -14,4 +14,4 @@ LEARNING_RATE = 0.01
 LOSS_WEIGHTS = [5, *([1/5 * 5e2] * 5)]
 BATCH_SIZE = 1
 
-MODEL_PATH = "ckpts/weights.e0050.l1.641e+06.hdf5"
+MODEL_PATH = "ckpts/generation_weights.E0004.L2.526e+06.hdf5"
