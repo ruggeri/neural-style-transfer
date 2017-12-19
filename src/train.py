@@ -1,6 +1,6 @@
 import config256 as config
 import generation_network
-from keras.callbacks import ModelCheckpoint
+from keras.callbacks import LambdaCallback
 from keras.layers import Input
 from keras.models import Model
 from keras.optimizers import Adam
@@ -80,6 +80,11 @@ def training_generator():
             # Reset for the next batch.
             training_images = []
 
+def save_generation_model(epoch, logs):
+    loss = logs['loss']
+    fname = f"ckpts/generation_weights.E{epoch:04d}.L{loss:.3e}.hdf5"
+    generation_model.save_weights(fname)
+
 training_model.fit_generator(
     training_generator(),
     epochs = 1000,
@@ -89,7 +94,5 @@ training_model.fit_generator(
         # more often. Each epoch looks at 1/32nd of the data.
         NUM_TRAINING_IMAGES // (config.BATCH_SIZE * 32)
     ),
-    callbacks = [ModelCheckpoint(
-        'ckpts/weights.e{epoch:04d}.l{loss:.3e}.hdf5',
-    )]
+    callbacks = [LambdaCallback(on_epoch_end = save_generation_model)]
 )
