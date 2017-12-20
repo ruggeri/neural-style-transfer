@@ -73,7 +73,7 @@ def training_generator():
             )
 
             yield (
-                training_images_array / 127.5,
+                (training_images_array - 127.5) / 127.5,
                 [training_images_content, *batch_style_target_featurizations]
             )
 
