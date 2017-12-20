@@ -3,8 +3,9 @@ from PIL import Image
 import numpy as np
 
 RGB_MEANS = np.array([123.68, 116.779, 103.939], dtype = np.float64)
+BGR_MEANS = np.array([103.939, 116.779, 123.68], dtype = np.float64)
 
-def open_image(fname):
+def open_image(fname, vgg_mean_adjustment = True):
     img_data = np.array(
         Image.open(fname), dtype = np.float64
     )
@@ -15,7 +16,8 @@ def open_image(fname):
             img_data[:, :, np.newaxis], repeats = 3, axis = 2
         )
 
-    img_data = img_data - RGB_MEANS
+    if vgg_mean_adjustment:
+        img_data = img_data - RGB_MEANS
     img_data[:, :, 2], img_data[:, :, 0] = (
         np.copy(img_data[:, :, 0]), np.copy(img_data[:, :, 2])
     )

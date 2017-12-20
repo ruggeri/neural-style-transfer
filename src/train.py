@@ -62,7 +62,7 @@ def training_generator():
             fname = os.path.join(config.TRAINING_INPUT_DIRECTORY, fname)
             if not re.match('^.*\.JPEG$', fname): continue
 
-            training_image = utils.open_image(fname)
+            training_image = utils.open_image(fname, vgg_mean_adjustment = False)
             training_images.append(training_image)
             if len(training_images) < config.BATCH_SIZE: continue
 
@@ -73,7 +73,7 @@ def training_generator():
             )
 
             yield (
-                training_images_array,
+                training_images_array / 127.5,
                 [training_images_content, *batch_style_target_featurizations]
             )
 

@@ -5,6 +5,7 @@
 from keras.layers import Add, BatchNormalization, Conv2D, Cropping2D, Input, Lambda
 from keras.models import Model
 import tensorflow as tf
+import utils
 
 def residual_transform_block(input_tensor, num_filters, block_idx):
     residual = Conv2D(
@@ -19,7 +20,7 @@ def residual_transform_block(input_tensor, num_filters, block_idx):
         filters = num_filters,
         kernel_size = (3, 3),
         strides = (1, 1),
-        activation = 'relu',
+        activation = 'linear',
         name = f'resblock{block_idx}/conv2d2'
     )(residual)
     residual = BatchNormalization(name = f'resblock{block_idx}/bn2')(residual)
@@ -128,9 +129,12 @@ def build(input_shape):
         filters = 3,
         kernel_size = (9, 9),
         strides = (1, 1),
-        activation = 'relu',
+        activation = 'tanh',
         padding = 'SAME',
         name = 'final_convolution',
     )(upscaled)
+    # I'm trying to say: if you just copy the input, I'll put it into
+    # the format for VGG for you.
+    upscaled = Lambda(lambda upscaled: ((upscaled+1) * 127.5) - utils.BGR_MEANS)(upscaled)
 
     return Model(input_tensor, upscaled)
