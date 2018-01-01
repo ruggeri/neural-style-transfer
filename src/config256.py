@@ -8,10 +8,10 @@ INPUT_IMAGE_PATH = None
 OUTPUT_IMAGE_PATH = 'outputs/new_image_b{:04}.png'
 INITIAL_EPOCH = 0
 
-TRAINING_INPUT_DIRECTORY = '/ebs/imagenet/ILSVRC2014_DET_train'
+TRAINING_INPUT_DIRECTORY = '/ebs/coco2017/jpgs'
 
 LEARNING_RATE = 0.001
-LOSS_WEIGHTS = [5, *([1/5 * 5e2] * 5)]
-BATCH_SIZE = 1
+LOSS_WEIGHTS = [5, *([0 * 5e0] * 5)]
+BATCH_SIZE = 8
 
 MODEL_PATH = "ckpts/current.hdf5"

@@ -5,22 +5,40 @@ import numpy as np
 RGB_MEANS = np.array([123.68, 116.779, 103.939], dtype = np.float64)
 BGR_MEANS = np.array([103.939, 116.779, 123.68], dtype = np.float64)
 
-def open_image(fname, vgg_mean_adjustment = True):
+# TODO: Not particularly efficient...
+def batch_vgg_preprocess(batch_img_data):
+    batch_img_data = np.copy(batch_img_data)
+    for idx in range(batch_img_data.shape[0]):
+        batch_img_data[idx, :, :, :] = vgg_preprocess(
+            batch_img_data[idx, :, :, :]
+        )
+
+    return batch_img_data
+
+def vgg_preprocess(img_data):
+    img_data = np.copy(img_data)
+    img_data -= RGB_MEANS
+
+    img_data[:, :, 2], img_data[:, :, 0] = (
+        np.copy(img_data[:, :, 0]), np.copy(img_data[:, :, 2])
+    )
+
+    return img_data
+
+def open_image(fname, vggify = True):
     img_data = np.array(
         Image.open(fname), dtype = np.float64
     )
 
-    if len(img_data.shape) == 2:
-        # Grayscale image => Color
-        img_data = np.repeat(
-            img_data[:, :, np.newaxis], repeats = 3, axis = 2
-        )
+    # Used to do this when using ImageNet grayscale images.
+    #if len(img_data.shape) == 2:
+    #    # Grayscale image => Color
+    #    img_data = np.repeat(
+    #        img_data[:, :, np.newaxis], repeats = 3, axis = 2
+    #    )
 
-    if vgg_mean_adjustment:
-        img_data = img_data - RGB_MEANS
-    img_data[:, :, 2], img_data[:, :, 0] = (
-        np.copy(img_data[:, :, 0]), np.copy(img_data[:, :, 2])
-    )
+    if vggify:
+        img_data = vgg_preprocess(img_data)
 
     return img_data
 

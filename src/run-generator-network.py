@@ -12,9 +12,9 @@ import utils
 
 # Load source image.
 content_target_image = utils.open_image(
-    config.CONTENT_PHOTO_PATH, vgg_mean_adjustment = False
+    config.CONTENT_PHOTO_PATH
 )
-content_target_image = (content_target_image - 127.5) /127.5
+content_target_image /= 127.5
 
 generation_model = generation_network.build(input_shape = config.DIMS)
 generation_model.load_weights(config.MODEL_PATH)

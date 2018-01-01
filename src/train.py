@@ -4,6 +4,7 @@ from keras.callbacks import LambdaCallback, ReduceLROnPlateau
 from keras.layers import Input
 from keras.models import Model
 from keras.optimizers import Adam
+#from keras.preprocessing.image import ImageDataGenerator
 import loss_network
 import numpy as np
 import os
@@ -24,6 +25,7 @@ _, *style_target_featurizations = encoding_model.predict(
 # Setup combined generation and loss network.
 generation_input_tensor = Input(config.DIMS)
 generation_model = generation_network.build(config.DIMS)
+#generation_model.load_weights(config.MODEL_PATH)
 generation_output = generation_model(generation_input_tensor)
 training_outputs = encoding_model(generation_output)
 
@@ -49,44 +51,74 @@ batch_style_target_featurizations = [
     for s_matrix in style_target_featurizations
 ]
 
-NUM_TRAINING_IMAGES = 0
-for fname in os.listdir(config.TRAINING_INPUT_DIRECTORY):
-    fname = os.path.join(config.TRAINING_INPUT_DIRECTORY, fname)
-    if not re.match('^.*\.JPEG$', fname): continue
-    NUM_TRAINING_IMAGES += 1
+image_regexp = re.compile('.*\.jpg')
+def image_paths():
+    for path in os.listdir(config.TRAINING_INPUT_DIRECTORY):
+        path = os.path.join(config.TRAINING_INPUT_DIRECTORY, path)
+        if not os.path.isfile(path): continue
+        if not image_regexp.match(path): continue
+        yield path
 
-def training_generator():
-    while True:
-        training_images = []
-        for fname in os.listdir(config.TRAINING_INPUT_DIRECTORY):
-            fname = os.path.join(config.TRAINING_INPUT_DIRECTORY, fname)
-            if not re.match('^.*\.JPEG$', fname): continue
+from PIL import Image
+def images(image_paths):
+    for image_path in image_paths:
+        image = Image.open(image_path)
+        image = image.resize(config.DIMS[0:2])
+        image_data = np.array(image, dtype = np.float64)
+        # Handle grayscale images
+        if len(image_data.shape) == 2:
+            image_data = image_data[:, :, np.newaxis]
+            image_data = np.repeat(image_data, repeats = 3, axis = 2)
+        image_data = utils.vgg_preprocess(image_data)
+        yield image_data
 
-            training_image = utils.open_image(fname, vgg_mean_adjustment = False)
-            training_images.append(training_image)
-            if len(training_images) < config.BATCH_SIZE: continue
+def image_batches(images):
+    image_batch = []
+    for image_data in images:
+        image_batch.append(image_data)
+        if len(image_batch) < config.BATCH_SIZE: continue
 
-            # Convert to numpy array.
-            training_images_array = np.stack(training_images)
-            training_images_content, *_ = encoding_model.predict(
-                training_images_array
-            )
+        image_batch = np.stack(image_batch)
+        batch_content, *_ = encoding_model.predict(image_batch)
 
-            yield (
-                (training_images_array - 127.5) / 127.5,
-                [training_images_content, *batch_style_target_featurizations]
-            )
+        # Do a final bit of preprocessing so that scale into generator
+        # is not stupid.
+        image_batch = image_batch / 127.5
 
-            # Reset for the next batch.
-            training_images = []
+        yield (
+            image_batch,
+            [batch_content, *batch_style_target_featurizations]
+        )
+
+        image_batch = []
 
 def save_generation_model(epoch, logs):
     loss = logs['loss']
     fname = f"ckpts/generation_weights.E{epoch:04d}.L{loss:.3e}.hdf5"
     generation_model.save_weights(fname)
 
+NUM_TRAINING_IMAGES = 118287
+
+from queue import Queue
+QUEUE_SIZE = 64
+queue = Queue(maxsize = QUEUE_SIZE)
+
+def worker():
+    while True:
+        for image_batch in image_batches(images(image_paths())):
+            queue.put(image_batch)
+
+import threading
+t = threading.Thread(target = worker)
+t.start()
+
+def consumer():
+    while True:
+        image_batch = queue.get()
+        yield image_batch
+
 training_model.fit_generator(
-    training_generator(),
+    consumer(),
     epochs = 1000,
     initial_epoch = config.INITIAL_EPOCH,
     steps_per_epoch = (
@@ -98,8 +130,8 @@ training_model.fit_generator(
         LambdaCallback(on_epoch_end = save_generation_model),
         ReduceLROnPlateau(
             monitor = 'loss',
-            factor = 0.2,
-            patience = 5,
+            factor = 0.5,
+            patience = 1,
         ),
-    ]
+    ],
 )
