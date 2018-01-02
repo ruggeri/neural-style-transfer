@@ -2,6 +2,7 @@
 # https://arxiv.org/pdf/1603.08155.pdf
 # http://cs.stanford.edu/people/jcjohns/papers/eccv16/JohnsonECCV16Supplementary.pdf
 
+import keras.backend as K
 from keras.initializers import Constant
 from keras.layers import Activation, Add, BatchNormalization, Conv2D, Cropping2D, Input, Lambda
 from keras.models import Model
@@ -145,8 +146,7 @@ def build(input_shape):
         padding = 'SAME',
         name = 'final_convolution',
     )(upscaled)
-    # I'm trying to say: if you just copy the input, I'll put it into
-    # the format for VGG for you.
-    upscaled = Lambda(lambda upscaled: ((upscaled+1) * 127.5) - utils.BGR_MEANS)(upscaled)
+
+    upscaled = Lambda(lambda ipt: (ipt+1)*127.5)(upscaled)
 
     return Model(input_tensor, upscaled)

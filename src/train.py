@@ -14,12 +14,24 @@ import utils
 
 # == Encode the style image! ==
 style_target_image = utils.open_image(config.STYLE_PHOTO_PATH)
+#
+#encoding_model = loss_network.build(input_shape = config.DIMS)
 
-encoding_input_tensor = Input(shape = config.DIMS)
+#for idx, features in enumerate(style_target_featurizations):
+#    with open(f'style_target_featurizations{idx}.npy', 'wb') as f:
+#        np.save(f, features)
+
+style_target_featurizations = []
+for idx in range(5):
+    with open(f'style_target_featurizations{idx}.npy', 'rb') as f:
+        style_target_featurizations.append(np.load(f))
+
+# Setup encoding model with training dimensions
 encoding_model = loss_network.build(input_shape = config.DIMS)
-style_target_content, *style_target_featurizations = encoding_model.predict(
+_, *_ = encoding_model.predict(
     # Expand dims so it's a batch of one!
-    np.expand_dims(style_target_image, axis = 0)
+    #np.expand_dims(style_target_image, axis = 0)
+    np.expand_dims(np.zeros(config.DIMS), axis = 0)
 )
 
 # Setup combined generation and loss network.
@@ -27,7 +39,19 @@ generation_input_tensor = Input(config.DIMS)
 generation_model = generation_network.build(config.DIMS)
 #generation_model.load_weights(config.MODEL_PATH)
 generation_output = generation_model(generation_input_tensor)
-training_outputs = encoding_model(generation_output)
+
+import keras.backend as K
+def convert_to_bgr(ipt):
+    red = ipt[:, :, :, 0]
+    green = ipt[:, :, :, 1]
+    blue = ipt[:, :, :, 2]
+    bgr_ipt = K.stack([blue, green, red], axis = -1)
+    return bgr_ipt - utils.BGR_MEANS
+
+from keras.layers import Lambda
+bgr_generation_output = Lambda(convert_to_bgr)(generation_output)
+
+training_outputs = encoding_model(bgr_generation_output)
 
 training_model = Model(generation_input_tensor, training_outputs)
 training_model.compile(
@@ -63,8 +87,8 @@ from PIL import Image
 def images(image_paths):
     for image_path in image_paths:
         image = Image.open(image_path)
-        image = image.resize(config.DIMS[0:2])
-        image_data = np.array(image, dtype = np.float64)
+        image = image.resize((config.DIMS[1], config.DIMS[0]))
+        image_data = np.array(image, dtype = np.float32)
         # Handle grayscale images
         if len(image_data.shape) == 2:
             image_data = image_data[:, :, np.newaxis]
@@ -78,7 +102,8 @@ def image_batches(images):
         if len(image_batch) < config.BATCH_SIZE: continue
 
         image_batch = np.stack(image_batch)
-        batch_content, *_ = encoding_model.predict(image_batch)
+        vgg_image_batch = utils.batch_vgg_preprocess(image_batch)
+        batch_content, *_ = encoding_model.predict(vgg_image_batch)
 
         # Do a final bit of preprocessing so that scale into generator
         # is not stupid.
@@ -91,36 +116,22 @@ def image_batches(images):
 
         image_batch = []
 
+def looped_image_batches():
+    while True:
+        ibs = image_batches(images(image_paths()))
+        for ib in ibs:
+            yield ib
+
 def save_generation_model(epoch, logs):
     loss = logs['loss']
-    fname = f"ckpts/generation_weights.styled2_E{epoch:04d}.L{loss:.3e}.hdf5"
+    fname = f"ckpts/generation_weights.styledX_E{epoch:04d}.L{loss:.3e}.hdf5"
     generation_model.save_weights(fname)
 
 NUM_TRAINING_IMAGES = 118287
 
-from queue import Queue
-QUEUE_SIZE = 64
-queue = Queue(maxsize = QUEUE_SIZE)
-
-def worker():
-    while True:
-        for image_batch in image_batches(images(image_paths())):
-            print(image_batch)
-            queue.put(image_batch)
-
-import threading
-#t = threading.Thread(target = worker)
-#t.start()
-
-def consumer():
-    while True:
-        image_batch = queue.get()
-        queue.task_done()
-        yield image_batch
-
 training_model.fit_generator(
-    image_batches(images(image_paths())),
-    epochs = 1000,
+    looped_image_batches(),
+    epochs = 2 * 32,
     initial_epoch = config.INITIAL_EPOCH,
     steps_per_epoch = (
         # I want to create 32x as many epochs so weights are saved
@@ -129,10 +140,10 @@ training_model.fit_generator(
     ),
     callbacks = [
         LambdaCallback(on_epoch_end = save_generation_model),
-        ReduceLROnPlateau(
-            monitor = 'loss',
-            factor = 0.5,
-            patience = 1,
-        ),
+        #ReduceLROnPlateau(
+        #    monitor = 'loss',
+        #    factor = 0.25,
+        #    patience = 3,
+        #),
     ],
 )

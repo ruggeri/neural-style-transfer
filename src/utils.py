@@ -2,8 +2,8 @@ import config
 from PIL import Image
 import numpy as np
 
-RGB_MEANS = np.array([123.68, 116.779, 103.939], dtype = np.float64)
-BGR_MEANS = np.array([103.939, 116.779, 123.68], dtype = np.float64)
+RGB_MEANS = np.array([123.68, 116.779, 103.939], dtype = np.float32)
+BGR_MEANS = np.array([103.939, 116.779, 123.68], dtype = np.float32)
 
 # TODO: Not particularly efficient...
 def batch_vgg_preprocess(batch_img_data):
@@ -27,7 +27,7 @@ def vgg_preprocess(img_data):
 
 def open_image(fname, vggify = True):
     img_data = np.array(
-        Image.open(fname), dtype = np.float64
+        Image.open(fname), dtype = np.float32
     )
 
     # Used to do this when using ImageNet grayscale images.
@@ -42,14 +42,15 @@ def open_image(fname, vggify = True):
 
     return img_data
 
-def save_image(idx, new_image, image_shape = config.DIMS):
+def save_image(idx, new_image, image_shape = config.DIMS, unvggify = True):
     # We make a copy to avoid accidentally swapping channels on the
     # user.
     new_image = np.copy(new_image).reshape(image_shape)
-    new_image[:, :, 2], new_image[:, :, 0] = (
-        np.copy(new_image[:, :, 0]), np.copy(new_image[:, :, 2])
-    )
-    new_image = new_image + RGB_MEANS
+    if unvggify:
+        new_image[:, :, 2], new_image[:, :, 0] = (
+            np.copy(new_image[:, :, 0]), np.copy(new_image[:, :, 2])
+        )
+        new_image = new_image + RGB_MEANS
 
     new_image = np.clip(new_image, 0, 255)
     new_image = new_image.astype(np.uint8)
