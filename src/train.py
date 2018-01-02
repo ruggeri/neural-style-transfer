@@ -17,7 +17,7 @@ style_target_image = utils.open_image(config.STYLE_PHOTO_PATH)
 
 encoding_input_tensor = Input(shape = config.DIMS)
 encoding_model = loss_network.build(input_shape = config.DIMS)
-_, *style_target_featurizations = encoding_model.predict(
+style_target_content, *style_target_featurizations = encoding_model.predict(
     # Expand dims so it's a batch of one!
     np.expand_dims(style_target_image, axis = 0)
 )
@@ -69,7 +69,6 @@ def images(image_paths):
         if len(image_data.shape) == 2:
             image_data = image_data[:, :, np.newaxis]
             image_data = np.repeat(image_data, repeats = 3, axis = 2)
-        image_data = utils.vgg_preprocess(image_data)
         yield image_data
 
 def image_batches(images):
@@ -83,7 +82,7 @@ def image_batches(images):
 
         # Do a final bit of preprocessing so that scale into generator
         # is not stupid.
-        image_batch = image_batch / 127.5
+        image_batch = image_batch / 255.0
 
         yield (
             image_batch,
@@ -94,7 +93,7 @@ def image_batches(images):
 
 def save_generation_model(epoch, logs):
     loss = logs['loss']
-    fname = f"ckpts/generation_weights.E{epoch:04d}.L{loss:.3e}.hdf5"
+    fname = f"ckpts/generation_weights.styled2_E{epoch:04d}.L{loss:.3e}.hdf5"
     generation_model.save_weights(fname)
 
 NUM_TRAINING_IMAGES = 118287
@@ -106,19 +105,21 @@ queue = Queue(maxsize = QUEUE_SIZE)
 def worker():
     while True:
         for image_batch in image_batches(images(image_paths())):
+            print(image_batch)
             queue.put(image_batch)
 
 import threading
-t = threading.Thread(target = worker)
-t.start()
+#t = threading.Thread(target = worker)
+#t.start()
 
 def consumer():
     while True:
         image_batch = queue.get()
+        queue.task_done()
         yield image_batch
 
 training_model.fit_generator(
-    consumer(),
+    image_batches(images(image_paths())),
     epochs = 1000,
     initial_epoch = config.INITIAL_EPOCH,
     steps_per_epoch = (

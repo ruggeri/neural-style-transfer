@@ -11,7 +11,7 @@ INITIAL_EPOCH = 0
 TRAINING_INPUT_DIRECTORY = '/ebs/coco2017/jpgs'
 
 LEARNING_RATE = 0.001
-LOSS_WEIGHTS = [5, *([0 * 5e0] * 5)]
+LOSS_WEIGHTS = [5, *([1/5 * 5e2] * 5)]
 BATCH_SIZE = 8
 
 MODEL_PATH = "ckpts/current.hdf5"

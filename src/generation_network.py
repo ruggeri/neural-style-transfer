@@ -2,28 +2,43 @@
 # https://arxiv.org/pdf/1603.08155.pdf
 # http://cs.stanford.edu/people/jcjohns/papers/eccv16/JohnsonECCV16Supplementary.pdf
 
-from keras.layers import Add, BatchNormalization, Conv2D, Cropping2D, Input, Lambda
+from keras.initializers import Constant
+from keras.layers import Activation, Add, BatchNormalization, Conv2D, Cropping2D, Input, Lambda
 from keras.models import Model
 import tensorflow as tf
 import utils
 
-def residual_transform_block(input_tensor, num_filters, block_idx):
-    residual = Conv2D(
+def conv(input_tensor, num_filters, kernel_size, stride, use_relu, padding):
+    output_tensor = Conv2D(
         filters = num_filters,
-        kernel_size = (3, 3),
-        strides = (1, 1),
-        activation = 'relu',
-        name = f'resblock{block_idx}/conv2d1',
+        kernel_size = (kernel_size, kernel_size),
+        strides = (stride, stride),
+        padding = padding,
     )(input_tensor)
-    residual = BatchNormalization(name = f'resblock{block_idx}/bn1')(residual)
-    residual = Conv2D(
-        filters = num_filters,
-        kernel_size = (3, 3),
-        strides = (1, 1),
-        activation = 'linear',
-        name = f'resblock{block_idx}/conv2d2'
-    )(residual)
-    residual = BatchNormalization(name = f'resblock{block_idx}/bn2')(residual)
+
+    output_tensor = BatchNormalization()(output_tensor)
+    if use_relu:
+        output_tensor = Activation('relu')(output_tensor)
+
+    return output_tensor
+
+def residual_transform_block(input_tensor, num_filters, block_idx):
+    residual = conv(
+        input_tensor,
+        num_filters,
+        kernel_size = 3,
+        stride = 1,
+        padding = 'VALID',
+        use_relu = True
+    )
+    residual = conv(
+        residual,
+        num_filters,
+        kernel_size = 3,
+        stride = 1,
+        padding = 'VALID',
+        use_relu = False
+    )
 
     cropped_input = Cropping2D(
         ((2, 2), (2, 2)),
@@ -49,33 +64,30 @@ def build(input_shape):
     ), name = 'padding')(input_tensor)
 
     # Begin squishing the image down! First just a stride 1 convolution.
-    squished_image = Conv2D(
-        filters = 32,
-        kernel_size = (9, 9),
-        strides = (1, 1),
+    squished_image = conv(
+        padded_input_tensor,
+        num_filters = 32,
+        kernel_size = 9,
+        stride = 1,
         padding = 'SAME',
-        activation = 'relu',
-        name = 'squish1/conv2d'
-    )(padded_input_tensor)
-    squished_image = BatchNormalization(name = 'squish1/bn')(squished_image)
-    squished_image = Conv2D(
-        filters = 64,
-        kernel_size = (3, 3),
-        strides = (2, 2),
+        use_relu = True,
+    )
+    squished_image = conv(
+        squished_image,
+        num_filters = 64,
+        kernel_size = 3,
+        stride = 2,
         padding = 'SAME',
-        activation = 'relu',
-        name = 'squish2/conv2d',
-    )(squished_image)
-    squished_image = BatchNormalization(name = 'squish2/bn')(squished_image)
-    squished_image = Conv2D(
-        filters = 128,
-        kernel_size = (3, 3),
-        strides = (2, 2),
+        use_relu = True,
+    )
+    squished_image = conv(
+        squished_image,
+        num_filters = 128,
+        kernel_size = 3,
+        stride = 2,
         padding = 'SAME',
-        activation = 'relu',
-        name = 'squish3/conv2d'
-    )(squished_image)
-    squished_image = BatchNormalization(name = 'squish3/bn')(squished_image)
+        use_relu = True,
+    )
 
     # Squishing complete! Begin the glorious transformation!
     transformed_image = residual_transform_block(
@@ -115,7 +127,7 @@ def build(input_shape):
         (input_shape[0], input_shape[1]),
     ), name = 'upscale2/resize')(upscaled)
     upscaled = Conv2D(
-        filters = 64,
+        filters = 32,
         kernel_size = (3, 3),
         strides = (1, 1),
         activation = 'relu',
