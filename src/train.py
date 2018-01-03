@@ -13,10 +13,10 @@ import re
 import utils
 
 # == Encode the style image! ==
-style_target_image = utils.open_image(config.STYLE_PHOTO_PATH)
+#style_target_image = utils.open_image(config.STYLE_PHOTO_PATH)
 #
 #encoding_model = loss_network.build(input_shape = config.DIMS)
-
+#
 #for idx, features in enumerate(style_target_featurizations):
 #    with open(f'style_target_featurizations{idx}.npy', 'wb') as f:
 #        np.save(f, features)
@@ -124,7 +124,7 @@ def looped_image_batches():
 
 def save_generation_model(epoch, logs):
     loss = logs['loss']
-    fname = f"ckpts/generation_weights.styledX_E{epoch:04d}.L{loss:.3e}.hdf5"
+    fname = f"ckpts/generation_weights.styledQ_E{epoch:04d}.L{loss:.3e}.hdf5"
     generation_model.save_weights(fname)
 
 NUM_TRAINING_IMAGES = 118287
